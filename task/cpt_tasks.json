@@ -1,0 +1,74 @@
+{
+  "stage": "cpt",
+  "title": "Stage 2: Continual Pre-Training Real Hugging Face Technical Benchmark",
+  "description": "Evaluation suite derived from standard code, mathematics, and systems administration benchmarks on Hugging Face.",
+  "huggingface_sources": [
+    {
+      "repo": "openai/openai_humaneval",
+      "split": "test",
+      "task_type": "Python programmatic function synthesis & completion"
+    },
+    {
+      "repo": "openai/gsm8k",
+      "split": "test",
+      "task_type": "Grade school mathematical reasoning & step-by-step arithmetic"
+    },
+    {
+      "repo": "open-web-math/open-web-math",
+      "split": "val",
+      "task_type": "LaTeX mathematical proofs & theorem formulation"
+    },
+    {
+      "repo": "SaeedRahmani/codeparrot_github_code_powershell",
+      "split": "val",
+      "task_type": "PowerShell automation & Windows administration scripting"
+    },
+    {
+      "repo": "code_search_net",
+      "split": "test",
+      "task_type": "Multi-language source code analysis (JS, TypeScript, C++)"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "hf_cpt_humaneval_01",
+      "source_dataset": "openai/openai_humaneval",
+      "category": "code_python",
+      "prompt": "def is_prime(n: int) -> bool:\n    \"\"\"Return True if a given number is prime, and False otherwise.\n    >>> is_prime(6)\n    False\n    >>> is_prime(101)\n    True\n    \"\"\"\n",
+      "reference_target": "    if n < 2:\n        return False\n    for k in range(2, int(n**0.5) + 1):\n        if n % k == 0:\n            return False\n    return True\n",
+      "eval_type": "code_completion"
+    },
+    {
+      "id": "hf_cpt_gsm8k_01",
+      "source_dataset": "openai/gsm8k",
+      "category": "math_reasoning",
+      "prompt": "Problem: Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May?\nSolution:\nStep 1: Natalia sold 48 / 2 =",
+      "reference_target": " 24 clips in May.\nStep 2: Altogether she sold 48 + 24 = 72 clips.",
+      "eval_type": "step_by_step_math"
+    },
+    {
+      "id": "hf_cpt_latex_math_01",
+      "source_dataset": "open-web-math/open-web-math",
+      "category": "latex_equations",
+      "prompt": "In calculus, the Gaussian integral over the entire real line is evaluated as:\n\\int_{-\\infty}^{\\infty} e^{-x^2} \\, dx =",
+      "reference_target": " \\sqrt{\\pi}",
+      "eval_type": "math_symbolic"
+    },
+    {
+      "id": "hf_cpt_powershell_01",
+      "source_dataset": "SaeedRahmani/codeparrot_github_code_powershell",
+      "category": "terminal_powershell",
+      "prompt": "# PowerShell command to recursively find all .parquet files in storage/dataset larger than 10MB:\n",
+      "reference_target": "Get-ChildItem -Path ./storage/dataset -Recurse -Filter *.parquet | Where-Object { $_.Length -gt 10MB } | Select-Object FullName, Length\n",
+      "eval_type": "cli_scripting"
+    },
+    {
+      "id": "hf_cpt_typescript_01",
+      "source_dataset": "code_search_net (TypeScript)",
+      "category": "code_typescript",
+      "prompt": "interface BearModelConfig {\n    vocabSize: number;\n    dModel: number;\n    nLayers: number;\n}\n\nfunction createDefaultConfig(): BearModelConfig {\n",
+      "reference_target": "    return {\n        vocabSize: 60000,\n        dModel: 1024,\n        nLayers: 16,\n    };\n}\n",
+      "eval_type": "code_completion"
+    }
+  ]
+}

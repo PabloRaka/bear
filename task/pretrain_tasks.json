@@ -1,0 +1,74 @@
+{
+  "stage": "pretrain",
+  "title": "Stage 1: Pre-training Real Hugging Face Foundation Benchmark",
+  "description": "Evaluation suite derived from open-access Hugging Face benchmarks across Indonesian and English general knowledge, science, and reasoning.",
+  "huggingface_sources": [
+    {
+      "repo": "wikimedia/wikipedia",
+      "split": "20231101.id",
+      "task_type": "Indonesian encyclopedic knowledge & language modeling"
+    },
+    {
+      "repo": "cais/mmlu",
+      "split": "test",
+      "task_type": "Massive Multitask Language Understanding"
+    },
+    {
+      "repo": "indonlp/IndoMMLU",
+      "split": "test",
+      "task_type": "Indonesian multi-subject knowledge & reasoning"
+    },
+    {
+      "repo": "karpathy/climbmix-400b-shuffle",
+      "split": "val",
+      "task_type": "Curated high-density pre-training corpus"
+    },
+    {
+      "repo": "allenai/ai2_arc",
+      "split": "ARC-Challenge",
+      "task_type": "Advanced science reasoning"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "hf_pretrain_id_wiki_01",
+      "source_dataset": "wikimedia/wikipedia (20231101.id)",
+      "category": "indonesian_encyclopedic",
+      "prompt": "Candi Borobudur adalah candi Buddha terbesar di dunia yang terletak di Magelang, Jawa Tengah. Candi ini dibangun pada abad ke-8 dan ke-9 Masehi pada masa pemerintahan wangsa",
+      "reference_target": " Syailendra.",
+      "eval_type": "next_token_perplexity"
+    },
+    {
+      "id": "hf_pretrain_id_indommlu_01",
+      "source_dataset": "indonlp/IndoMMLU",
+      "category": "indonesian_science",
+      "prompt": "Pertanyaan: Organel sel yang berperan sebagai tempat terjadinya respirasi seluler dan menghasilkan energi dalam bentuk ATP adalah\nJawaban:",
+      "reference_target": " Mitokondria.",
+      "eval_type": "zero_shot_qa"
+    },
+    {
+      "id": "hf_pretrain_en_mmlu_cs_01",
+      "source_dataset": "cais/mmlu (computer_science)",
+      "category": "computer_science",
+      "prompt": "Question: In the context of computer networking, what is the primary function of the Address Resolution Protocol (ARP)?\nAnswer:",
+      "reference_target": " ARP maps an IP network-layer address to a physical MAC link-layer address.",
+      "eval_type": "zero_shot_qa"
+    },
+    {
+      "id": "hf_pretrain_en_arc_01",
+      "source_dataset": "allenai/ai2_arc",
+      "category": "physics_science",
+      "prompt": "When light passes from air into water, its speed decreases and its direction bends toward the normal. This physical phenomenon is known as",
+      "reference_target": " refraction.",
+      "eval_type": "cloze_continuation"
+    },
+    {
+      "id": "hf_pretrain_en_climbmix_01",
+      "source_dataset": "karpathy/climbmix-400b-shuffle",
+      "category": "formal_reasoning",
+      "prompt": "The central limit theorem in probability theory states that the distribution of the sum of a large number of independent and identically distributed random variables approaches a",
+      "reference_target": " normal distribution (Gaussian distribution).",
+      "eval_type": "cloze_continuation"
+    }
+  ]
+}

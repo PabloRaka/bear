@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mesosfer-bear"
+version = "0.1.0"
+description = "Mesosfer Bear AI Engine and Tokenizer"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Mesosfer Team" }
+]
+dependencies = [
+    "regex>=2023.10.3",
+    "torch>=2.0.0",
+    "pyarrow>=12.0.0",
+    "huggingface-hub>=0.20.0",
+    "python-dotenv>=1.0.0",
+    "tiktoken>=0.13.0",
+    "tokenizers>=0.22.2",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "flash-attn>=2.5.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]

@@ -1,0 +1,61 @@
+{
+  "stage": "sft",
+  "title": "Stage 3: Supervised Fine-Tuning Real Hugging Face Instruction Benchmark",
+  "description": "Evaluation suite derived from standard instruction-following, multi-turn chat, and tool-calling benchmarks on Hugging Face using Kimi-K3 XTML markup format.",
+  "huggingface_sources": [
+    {
+      "repo": "FreedomIntelligence/alpaca-gpt4-indonesian",
+      "split": "train",
+      "task_type": "Indonesian natural instruction & high-quality GPT-4 dialogue"
+    },
+    {
+      "repo": "HuggingFaceH4/ultrachat_200k",
+      "split": "test_sft",
+      "task_type": "Multi-turn conversational role-play and deep informative explanations"
+    },
+    {
+      "repo": "garage-bAInd/Open-Platypus",
+      "split": "test",
+      "task_type": "Chain-of-thought mathematical and logical problem solving"
+    },
+    {
+      "repo": "glaiveai/glaive-function-calling-v2",
+      "split": "test",
+      "task_type": "Structured function and tool invocation markup"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "hf_sft_id_dialogue_01",
+      "source_dataset": "FreedomIntelligence/alpaca-gpt4-indonesian",
+      "category": "indonesian_chat",
+      "formatted_prompt": "<|open|>message role=\"system\"<|close|>Anda adalah asisten AI Mesosfer Bear yang cerdas dan berbahasa Indonesia baku.<|end_of_msg|><|open|>message role=\"user\"<|close|>Jelaskan apa itu transformer dalam machine learning dan sebutkan komponen utamanya secara ringkas.<|end_of_msg|><|open|>message role=\"assistant\" thinking=\"max\"<|close|>",
+      "expected_keywords": ["self-attention", "encoder", "decoder", "feed-forward", "positional encoding"],
+      "eval_type": "instruction_following"
+    },
+    {
+      "id": "hf_sft_ultrachat_multi_01",
+      "source_dataset": "HuggingFaceH4/ultrachat_200k",
+      "category": "multi_turn_english",
+      "formatted_prompt": "<|open|>message role=\"system\"<|close|>You are Bear AI, an expert software architect.<|end_of_msg|><|open|>message role=\"user\"<|close|>What is the difference between synchronous and asynchronous I/O in high-throughput servers?<|end_of_msg|><|open|>message role=\"assistant\"<|close|>Synchronous I/O blocks the executing thread until the operation completes, whereas asynchronous I/O allows the thread to continue executing other tasks while the I/O operation is processed in the background.<|end_of_msg|><|open|>message role=\"user\"<|close|>Give a quick Python example using asyncio.<|end_of_msg|><|open|>message role=\"assistant\" thinking=\"max\"<|close|>",
+      "expected_keywords": ["async def", "await", "asyncio.sleep", "asyncio.run"],
+      "eval_type": "multi_turn_continuation"
+    },
+    {
+      "id": "hf_sft_platypus_cot_01",
+      "source_dataset": "garage-bAInd/Open-Platypus",
+      "category": "chain_of_thought",
+      "formatted_prompt": "<|open|>message role=\"system\"<|close|>You are a rigorous mathematical reasoning assistant.<|end_of_msg|><|open|>message role=\"user\"<|close|>If a triangle has side lengths 7, 24, and 25, is it a right-angled triangle? Show the calculation.<|end_of_msg|><|open|>message role=\"assistant\" thinking=\"max\"<|close|>",
+      "expected_keywords": ["7^2", "24^2", "25^2", "49", "576", "625", "Pythagorean", "right-angled"],
+      "eval_type": "reasoning_cot"
+    },
+    {
+      "id": "hf_sft_glaive_tool_01",
+      "source_dataset": "glaiveai/glaive-function-calling-v2",
+      "category": "function_calling",
+      "formatted_prompt": "<|open|>message role=\"system\"<|close|>You have access to tool `get_weather(city: str)`. When asked for weather, call the function.<|end_of_msg|><|open|>message role=\"user\"<|close|>Bagaimana cuaca di Jakarta hari ini?<|end_of_msg|><|open|>message role=\"assistant\"<|close|>",
+      "expected_keywords": ["get_weather", "Jakarta"],
+      "eval_type": "tool_calling"
+    }
+  ]
+}
