@@ -27,8 +27,10 @@ except ImportError:
 def get_attn_backend() -> str:
     """Return which attention backend will be used."""
     if FLASH_ATTN_AVAILABLE:
-        return "flash-attn (Dao-AILab)"
-    return "PyTorch SDPA (auto Flash/Memory-efficient/Math)"
+        return "flash-attn v2 (Dao-AILab)"
+    if torch.cuda.is_available():
+        return "PyTorch SDPA (Native FlashAttention / AOTriton Kernel)"
+    return "PyTorch SDPA (CPU Kernel)"
 
 
 # -- Unified attention function ---------------------------------------------
