@@ -6,7 +6,7 @@ High LR, long warmup, many steps.
 
 Usage:
   uv run python -m train.pretrain
-  uv run python -m train.pretrain --batch-size 4 --max-steps 50000
+  uv run python -m train.pretrain --batch-size 16 --grad-accum 8 --max-steps 12000
   uv run python -m train.pretrain --resume storage/models/bear_step_1000.pt
   uv run python -m train.pretrain --dry-run
 """
@@ -44,8 +44,8 @@ def main():
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--min-lr", type=float, default=3e-5)
     parser.add_argument("--warmup-steps", type=int, default=500)
-    parser.add_argument("--max-steps", type=int, default=50000)
-    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--max-steps", type=int, default=12000, help="Max steps (12k steps ~6.29B tokens, Chinchilla optimal for 240M params)")
+    parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--grad-accum", type=int, default=8)
     parser.add_argument("--weight-decay", type=float, default=0.1)
     parser.add_argument("--grad-clip", type=float, default=1.0)
@@ -56,8 +56,8 @@ def main():
 
     # Checkpointing & Evaluation
     parser.add_argument("--checkpoint-dir", type=str, default="storage/models")
-    parser.add_argument("--save-every", type=int, default=1000)
-    parser.add_argument("--eval-every", type=int, default=1000, help="Evaluate validation loss/BPB every N steps")
+    parser.add_argument("--save-every", type=int, default=500)
+    parser.add_argument("--eval-every", type=int, default=500, help="Evaluate validation loss/BPB every N steps")
     parser.add_argument("--eval-batches", type=int, default=50, help="Number of batches to evaluate")
     parser.add_argument("--log-every", type=int, default=10)
     parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint to resume from")

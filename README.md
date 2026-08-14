@@ -124,11 +124,11 @@ Train the model sequentially through the 4-stage curriculum. **Always run the st
 ```
 
 #### 🔹 Stage 1: Foundational Pre-training
-*General knowledge, large-scale multi-domain language modeling (LR: 3e-4, Warmup: 500 steps).*
+*General knowledge, large-scale multi-domain language modeling (Chinchilla Optimal: ~6.29B tokens, LR: 3e-4, Warmup: 500 steps).*
 
 ```bash
-# 1. Train Pre-training Stage
-uv run python -m train.pretrain --batch-size 4 --grad-accum 8 --max-steps 50000
+# 1. Train Pre-training Stage (12,000 steps ~ 6.29B tokens in ~14 hours on MI300X)
+uv run python -m train.pretrain --batch-size 16 --grad-accum 8 --max-steps 12000
 
 # 2. Evaluate Pre-training Checkpoint (PPL, Loss, Bits-Per-Byte on Wikipedia/MMLU/ARC)
 uv run python -m eval.evaluator --stage pretrain --checkpoint storage/models/bear_final.pt
