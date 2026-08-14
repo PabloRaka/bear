@@ -248,7 +248,8 @@ def train(
     print(f"{'='*60}")
     print(f"  Model params : {model.param_count():,} ({model.param_count()/1e6:.1f}M)")
     print(f"  Attention     : {get_attn_backend()}")
-    print(f"  Device        : {device}")
+    device_name = f"{device} ({torch.cuda.get_device_name(0)})" if device == "cuda" and torch.cuda.is_available() else device
+    print(f"  Device        : {device_name}")
     print(f"  Precision     : {config.dtype}")
     print(f"  LR            : {config.lr} -> {config.min_lr} (cosine, {config.warmup_steps} warmup)")
     print(f"  Batch size    : {config.batch_size} x {config.grad_accum_steps} accum = {config.batch_size * config.grad_accum_steps} effective")
