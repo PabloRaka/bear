@@ -7,13 +7,13 @@ name = "mesosfer-bear"
 version = "0.1.0"
 description = "Mesosfer Bear AI Engine and Tokenizer"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 authors = [
     { name = "Mesosfer Team" }
 ]
 dependencies = [
     "regex>=2023.10.3",
-    "torch>=2.0.0",
+    "torch>=2.5.0,<3.0",
     "pyarrow>=12.0.0",
     "huggingface-hub>=0.20.0",
     "python-dotenv>=1.0.0",
@@ -25,16 +25,16 @@ dependencies = [
 
 [project.optional-dependencies]
 cpu = [
-    "torch>=2.0.0",
+    "torch>=2.5.0,<3.0",
 ]
 cuda = [
-    "torch>=2.0.0",
+    "torch>=2.5.0,<3.0",
 ]
 gpu = [
-    "torch>=2.0.0",
+    "torch>=2.5.0,<3.0",
 ]
 rocm = [
-    "torch>=2.0.0",
+    "torch>=2.5.0,<3.0",
     "pytorch-triton-rocm ; sys_platform == 'linux'",
 ]
 
