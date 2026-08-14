@@ -24,13 +24,13 @@ We use [`uv`](https://github.com/astral-sh/uv) for fast, deterministic, and repr
 git clone https://github.com/mesosfer/bear.git
 cd bear
 
-# 2. Synchronize environment & dependencies
+# 2. Synchronize base environment & dependencies
 uv sync
 
-# 3. For GPU Cluster (NVIDIA CUDA / AMD Instinct MI300X):
+# 3a. For NVIDIA CUDA GPUs:
 uv sync --extra gpu
 
-# Specific for AMD Instinct MI300X (ROCm 6.0+ CDNA 3):
+# 3b. For AMD Instinct MI300X (ROCm 6.0+ CDNA 3):
 GPU_ARCHS="gfx942" uv pip install flash-attn --no-build-isolation
 ```
 
