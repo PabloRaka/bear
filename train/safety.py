@@ -182,6 +182,7 @@ def main():
         config=train_config,
         device=args.device,
         resume_from=args.resume,
+        reset_step=True,
     )
 
 

@@ -183,14 +183,18 @@ def load_checkpoint(
     model: BearTransformer,
     optimizer: Optional[torch.optim.Optimizer] = None,
     device: str = "cpu",
+    reset_step: bool = False,
 ) -> int:
     """Load checkpoint and return the step number to resume from."""
     checkpoint = torch.load(path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model_state"])
+    loss = checkpoint.get("loss", float("nan"))
+    if reset_step:
+        print(f"  [CHECKPOINT] Loaded weights from {path} (loss={loss:.4f}) - Starting fresh stage at step 0")
+        return 0
     if optimizer is not None and "optimizer_state" in checkpoint:
         optimizer.load_state_dict(checkpoint["optimizer_state"])
     step = checkpoint.get("step", 0)
-    loss = checkpoint.get("loss", float("nan"))
     print(f"  [CHECKPOINT] Resumed from step {step} (loss={loss:.4f}) <- {path}")
     return step
 
@@ -204,6 +208,7 @@ def train(
     config: Optional[TrainConfig] = None,
     device: str = "auto",
     resume_from: Optional[str] = None,
+    reset_step: bool = False,
 ):
     """
     Main training loop.
@@ -215,6 +220,7 @@ def train(
         config: TrainConfig instance.
         device: "auto", "cuda", "cpu", or "mps".
         resume_from: Path to checkpoint file to resume from.
+        reset_step: If True, reset step counter to 0 (for new stage initialization).
     """
     config = config or TrainConfig()
 
@@ -239,7 +245,7 @@ def train(
     start_step = 0
 
     if resume_from and Path(resume_from).exists():
-        start_step = load_checkpoint(Path(resume_from), model, optimizer, device)
+        start_step = load_checkpoint(Path(resume_from), model, optimizer, device, reset_step=reset_step)
 
     # Print training info
     tokens_per_step = config.batch_size * config.grad_accum_steps * config.context_length
@@ -263,6 +269,7 @@ def train(
     optimizer.zero_grad()
 
     running_loss = 0.0
+    micro_loss_sum = 0.0
     tokens_seen = 0
     t0 = time.time()
     data_iter = iter(train_loader)
