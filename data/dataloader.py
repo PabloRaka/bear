@@ -28,22 +28,126 @@ from data.dataset import DATASET_REGISTRY
 # -- Text extraction helpers ------------------------------------------------
 
 # ponytail: column priority order for parquet text extraction
-_TEXT_COLUMNS = ("text", "content", "code", "body", "sentence", "document")
+_TEXT_COLUMNS = ("text", "content", "code", "body", "sentence", "document", "prompt", "chosen")
+
+
+def _format_record_to_text(obj) -> Optional[str]:
+    """
+    Format any raw text, SFT dialogue, or safety record into standardized training text.
+    Handles:
+      1. Plain text / code strings
+      2. ShareGPT format: {"conversations": [{"from": "human"|"gpt", "value": "..."}]}
+      3. Messages format: {"messages": [{"role": "user"|"assistant", "content": "..."}]}
+      4. Alpaca / Platypus format: {"instruction": "...", "input": "...", "output": "..."}
+      5. Glaive format: {"system": "...", "chat": "..."}
+      6. Anthropic HH-RLHF format: {"chosen": "Human: ...\n\nAssistant: ..."}
+      7. PKU-SafeRLHF format: {"prompt": "...", "response_0"|"response_1": "..."}
+    """
+    if isinstance(obj, str):
+        s = obj.strip()
+        return s if s else None
+
+    if not isinstance(obj, dict):
+        return None
+
+    # 1. ShareGPT format (e.g. Alpaca-Indonesian)
+    if "conversations" in obj and isinstance(obj["conversations"], list):
+        turns = []
+        for msg in obj["conversations"]:
+            role_raw = str(msg.get("from", "user")).lower()
+            role = "assistant" if role_raw in ("gpt", "assistant", "bot") else ("system" if role_raw == "system" else "user")
+            content = msg.get("value", "") or msg.get("content", "")
+            if content and str(content).strip():
+                thinking_attr = ' thinking="max"' if role == "assistant" else ""
+                turns.append(f'<|open|>message role="{role}"{thinking_attr}<|close|>{str(content).strip()}<|end_of_msg|>')
+        if turns:
+            return "".join(turns)
+
+    # 2. Messages list format (e.g. UltraChat 200k)
+    if "messages" in obj and isinstance(obj["messages"], list):
+        turns = []
+        for msg in obj["messages"]:
+            role = str(msg.get("role", "user")).lower()
+            content = msg.get("content", "")
+            if content and str(content).strip():
+                thinking_attr = ' thinking="max"' if role == "assistant" else ""
+                turns.append(f'<|open|>message role="{role}"{thinking_attr}<|close|>{str(content).strip()}<|end_of_msg|>')
+        if turns:
+            return "".join(turns)
+
+    # 3. Alpaca / Open-Platypus format (instruction, input, output/response)
+    if "instruction" in obj and ("output" in obj or "response" in obj):
+        instr = str(obj.get("instruction", "")).strip()
+        inp = str(obj.get("input", "")).strip()
+        out = str(obj.get("output", "") or obj.get("response", "")).strip()
+        user_msg = f"{instr}\n\n{inp}".strip() if inp else instr
+        if user_msg and out:
+            return (
+                f'<|open|>message role="user"<|close|>{user_msg}<|end_of_msg|>'
+                f'<|open|>message role="assistant" thinking="max"<|close|>{out}<|end_of_msg|>'
+            )
+
+    # 4. Glaive Function Calling format (system, chat)
+    if "chat" in obj and obj["chat"]:
+        sys_txt = str(obj.get("system", "")).strip()
+        chat_txt = str(obj.get("chat", "")).strip()
+        prefix = f'<|open|>message role="system"<|close|>{sys_txt}<|end_of_msg|>' if sys_txt else ""
+        return f"{prefix}{chat_txt}"
+
+    # 5. Anthropic HH-RLHF format (chosen, rejected)
+    if "chosen" in obj and obj["chosen"]:
+        chosen_str = str(obj["chosen"]).strip()
+        if chosen_str:
+            return chosen_str
+
+    # 6. PKU-SafeRLHF format (prompt, response_0, response_1)
+    if "prompt" in obj and ("response_0" in obj or "response_1" in obj):
+        prompt = str(obj.get("prompt", "")).strip()
+        resp = str(obj.get("response_0", "") or obj.get("response_1", "")).strip()
+        if prompt and resp:
+            return (
+                f'<|open|>message role="user"<|close|>{prompt}<|end_of_msg|>'
+                f'<|open|>message role="assistant" thinking="max"<|close|>{resp}<|end_of_msg|>'
+            )
+
+    # 7. Standard text columns fallback
+    for key in _TEXT_COLUMNS:
+        if key in obj and obj[key]:
+            val = obj[key]
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+
+    return None
 
 
 def _extract_text_from_parquet(file_path: Path) -> Iterator[str]:
-    """Yield text strings from a parquet file, auto-detecting the text column."""
+    """Yield text strings from a parquet file, auto-formatting records or detecting text columns."""
     import pyarrow.parquet as pq
 
     table = pq.read_table(file_path)
+    cols = table.column_names
+    
+    # Fast path: check if structured dialogue column exists (messages, instruction, chat)
+    has_structured = any(k in cols for k in ("messages", "instruction", "conversations", "chat", "chosen"))
+    
+    if has_structured:
+        pydict = table.to_pydict()
+        num_rows = len(table)
+        for i in range(num_rows):
+            rec = {c: pydict[c][i] for c in cols}
+            text = _format_record_to_text(rec)
+            if text:
+                yield text
+        return
+
+    # Plain column path (pretrain / CPT raw text)
     col_name = None
     for candidate in _TEXT_COLUMNS:
-        if candidate in table.column_names:
+        if candidate in cols:
             col_name = candidate
             break
     if col_name is None:
-        # Fallback: first string column
-        for col in table.column_names:
+        for col in cols:
             if table.schema.field(col).type == "string":
                 col_name = col
                 break
@@ -69,13 +173,9 @@ def _extract_text_from_json_gz(file_path: Path) -> Iterator[str]:
                 obj = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if isinstance(obj, dict):
-                for key in _TEXT_COLUMNS:
-                    if key in obj and obj[key]:
-                        yield obj[key]
-                        break
-            elif isinstance(obj, str) and obj:
-                yield obj
+            text = _format_record_to_text(obj)
+            if text:
+                yield text
 
 
 def _extract_text_from_jsonl(file_path: Path) -> Iterator[str]:
@@ -89,13 +189,9 @@ def _extract_text_from_jsonl(file_path: Path) -> Iterator[str]:
                 obj = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if isinstance(obj, dict):
-                for key in _TEXT_COLUMNS:
-                    if key in obj and obj[key]:
-                        yield obj[key]
-                        break
-            elif isinstance(obj, str) and obj:
-                yield obj
+            text = _format_record_to_text(obj)
+            if text:
+                yield text
 
 
 def _extract_text_from_json(file_path: Path) -> Iterator[str]:
@@ -104,13 +200,13 @@ def _extract_text_from_json(file_path: Path) -> Iterator[str]:
         data = json.load(f)
     if isinstance(data, list):
         for item in data:
-            if isinstance(item, dict):
-                for key in _TEXT_COLUMNS:
-                    if key in item and item[key]:
-                        yield item[key]
-                        break
-            elif isinstance(item, str) and item:
-                yield item
+            text = _format_record_to_text(item)
+            if text:
+                yield text
+    elif isinstance(data, dict):
+        text = _format_record_to_text(data)
+        if text:
+            yield text
 
 
 def extract_texts(file_path: Path) -> Iterator[str]:
