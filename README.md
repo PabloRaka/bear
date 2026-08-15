@@ -211,6 +211,26 @@ uv run python -m chat.cli --dry-run
 
 ---
 
+### Step 5: Interactive Model Packaging & Hugging Face Hub Release
+
+Package and commit trained checkpoints per stage (complete with 60k Kimi-K3 tokenizer, architecture config, generation config, standalone `inference.py`, `chat/cli.py`, self-contained engine, and benchmark scorecards) directly to Hugging Face Model Hub:
+
+```bash
+# 1. Interactive terminal wizard (Select stage, checkpoint, and repo interactively)
+uv run python -m scripts.commit_model
+
+# 2. Or direct CLI commit
+uv run python -m scripts.commit_model --stage pretrain --checkpoint storage/models/bear_final.pt --repo Dummy9898/bear-240m-pretrain
+
+# 3. Export standalone bundle locally to storage/export/ without uploading
+uv run python -m scripts.commit_model --stage pretrain --export-only
+
+# 4. List all available local checkpoints
+uv run python -m scripts.commit_model --list
+```
+
+---
+
 ## 🧪 Running Unit Tests
 
 Execute the complete test suite (covering dataloaders, engine, tokenizers, transformers, evaluator, and chat CLI):
@@ -242,6 +262,9 @@ bear/
 │   └── transformer.py              # Llama-style decoder-only BearTransformer
 ├── eval/
 │   └── evaluator.py                # Stage-specific benchmark runner & reporter
+├── scripts/
+│   ├── __init__.py
+│   └── commit_model.py             # Interactive Model Release, Bundling & Hub Committer
 ├── task/
 │   ├── pretrain_tasks.json         # HF Pretrain Benchmark Tasks (Wikipedia, MMLU, ARC)
 │   ├── cpt_tasks.json              # HF CPT Technical Tasks (HumanEval, GSM8K, PowerShell)
@@ -249,10 +272,12 @@ bear/
 │   └── safety_tasks.json           # HF Safety Tasks (PKU-SafeRLHF, HH-RLHF, JailbreakHub)
 ├── tests/
 │   ├── test_chat.py
+│   ├── test_commit_model.py
 │   ├── test_dataloader.py
 │   ├── test_dataset.py
 │   ├── test_engine.py
 │   ├── test_eval.py
+│   ├── test_hf_download.py
 │   ├── test_hf_upload.py
 │   ├── test_tokenizer.py
 │   └── test_transformer.py
