@@ -300,9 +300,11 @@ def package_and_export_bundle(
     if "model_config" in ckpt_data:
         m_cfg = ckpt_data["model_config"]
         if isinstance(m_cfg, dict):
-            config = BearConfig.from_dict(m_cfg)
-        else:
+            config = BearConfig.from_dict(m_cfg) if hasattr(BearConfig, "from_dict") else BearConfig(**{k: v for k, v in m_cfg.items() if hasattr(BearConfig, k)})
+        elif isinstance(m_cfg, BearConfig):
             config = m_cfg
+        else:
+            config = BearConfig()
     else:
         config = BearConfig()
     
