@@ -46,8 +46,14 @@ STAGES = {
 }
 
 
-def find_available_checkpoints(model_dir: Path = Path("storage/models")) -> List[Tuple[Path, int, float, str]]:
-    """Scan and return list of (path, step, loss, size_str) sorted by step."""
+def find_available_checkpoints(
+    model_dir: Path = Path("storage/models"),
+    target_stage: Optional[str] = None,
+    filter_by_stage: bool = True,
+) -> List[Tuple[Path, int, float, str, str]]:
+    """Scan and return list of (path, step, loss, stage, size_str).
+    If target_stage is specified and filter_by_stage=True, strictly returns checkpoints matching that stage.
+    """
     if not model_dir.exists():
         return []
     
@@ -56,15 +62,42 @@ def find_available_checkpoints(model_dir: Path = Path("storage/models")) -> List
         size_mb = f.stat().st_size / (1024 * 1024)
         step = 0
         loss = float("nan")
+        stage = ""
         try:
             ckpt_data = torch.load(f, map_location="cpu", weights_only=False)
             step = ckpt_data.get("step", 0)
             loss = ckpt_data.get("loss", float("nan"))
+            stage = (
+                ckpt_data.get("train_config", {}).get("stage")
+                or ckpt_data.get("bear_identity", {}).get("training_stage")
+                or ckpt_data.get("stage", "")
+            )
         except Exception:
             pass
-        ckpts.append((f, step, loss, f"{size_mb:.1f} MB"))
+
+        # Normalize stage detection if not explicitly set
+        if not stage or stage == "unknown":
+            f_lower = f.name.lower()
+            if "cpt" in f_lower:
+                stage = "cpt"
+            elif "sft" in f_lower:
+                stage = "sft"
+            elif "safety" in f_lower:
+                stage = "safety"
+            else:
+                stage = "pretrain"
+
+        ckpts.append((f, step, loss, stage, f"{size_mb:.1f} MB"))
     
-    # Sort by step descending, or name
+    # Strict filter by selected stage
+    if target_stage and target_stage != "custom" and filter_by_stage:
+        matching = [c for c in ckpts if c[3].lower() == target_stage.lower()]
+        if matching:
+            matching.sort(key=lambda x: (x[1], x[0].name), reverse=True)
+            return matching
+        else:
+            print(f"  [INFO] No checkpoints tagged specifically as '{target_stage}'. Showing all.")
+
     ckpts.sort(key=lambda x: (x[1], x[0].name), reverse=True)
     return ckpts
 
@@ -472,7 +505,7 @@ def interactive_menu():
         return
 
     # 2. Select Checkpoint
-    ckpts = find_available_checkpoints()
+    ckpts = find_available_checkpoints(target_stage=selected_stage)
     if not ckpts and not custom_ckpt:
         print(f"\n[ERROR] No checkpoints found in storage/models/! Make sure training has completed.")
         return
@@ -481,10 +514,11 @@ def interactive_menu():
     if custom_ckpt:
         target_ckpt = Path(custom_ckpt)
     else:
-        print(f"\n[Step 2] Available Checkpoints in storage/models/:")
-        for idx, (c_path, step, loss, size_str) in enumerate(ckpts, 1):
+        print(f"\n[Step 2] Available [{selected_stage.upper()}] Checkpoints in storage/models/:")
+        for idx, (c_path, step, loss, c_stage, size_str) in enumerate(ckpts, 1):
             loss_str = f"{loss:.4f}" if not torch.isnan(torch.tensor(loss)) else "N/A"
-            print(f"  [{idx}] {c_path.name:<28} | Step: {step:>6d} | Loss: {loss_str} | Size: {size_str}")
+            stage_tag = f"[{c_stage.upper()}]" if c_stage else "[UNKNOWN]"
+            print(f"  [{idx}] {c_path.name:<28} | {stage_tag:<11} | Step: {step:>6d} | Loss: {loss_str} | Size: {size_str}")
         
         c_choice = input(f"\nSelect checkpoint [1-{len(ckpts)}, default 1 ({ckpts[0][0].name})]: ").strip() or "1"
         try:
@@ -559,9 +593,10 @@ def main():
     if args.list:
         ckpts = find_available_checkpoints()
         print("\nAvailable checkpoints in storage/models/:")
-        for c_path, step, loss, size_str in ckpts:
+        for c_path, step, loss, c_stage, size_str in ckpts:
             loss_str = f"{loss:.4f}" if not torch.isnan(torch.tensor(loss)) else "N/A"
-            print(f"  - {c_path.name:<28} | Step: {step:>6d} | Loss: {loss_str} | Size: {size_str}")
+            stage_tag = f"[{c_stage.upper()}]" if c_stage else "[UNKNOWN]"
+            print(f"  - {c_path.name:<28} | {stage_tag:<11} | Step: {step:>6d} | Loss: {loss_str} | Size: {size_str}")
         return
 
     # If no flags passed, run interactive wizard
@@ -571,7 +606,12 @@ def main():
 
     # CLI Flags execution
     stage = args.stage or "pretrain"
-    ckpt_path = Path(args.checkpoint) if args.checkpoint else Path("storage/models/bear_final.pt")
+    if args.checkpoint:
+        ckpt_path = Path(args.checkpoint)
+    else:
+        stage_ckpts = find_available_checkpoints(target_stage=stage, filter_by_stage=True)
+        ckpt_path = stage_ckpts[0][0] if stage_ckpts else Path("storage/models/bear_final.pt")
+
     if not ckpt_path.exists():
         print(f"[ERROR] Checkpoint not found: {ckpt_path}")
         sys.exit(1)
