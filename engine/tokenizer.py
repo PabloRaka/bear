@@ -262,7 +262,8 @@ class BearTokenizer:
         if not tokenize:
             return formatted_text
 
-        return self.encode(formatted_text, add_special_tokens=True, allow_special=True)
+        # When generating (add_generation_prompt=True), do not append EOS token so model can continue generating
+        return self.encode(formatted_text, add_special_tokens=(not add_generation_prompt), allow_special=True)
 
     def save(self, filepath: str):
         """Save vocabulary and config to JSON file."""
