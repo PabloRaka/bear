@@ -288,9 +288,22 @@ def main():
         tokenizer = BearTokenizer()
 
     # 2. Load Model
-    if args.dry_run or not Path(args.checkpoint).exists():
+    ckpt_path = Path(args.checkpoint)
+    if not ckpt_path.exists() and not args.dry_run:
+        for cand in (
+            "storage/models/safety/bear_final.pt",
+            "storage/models/sft/bear_final.pt",
+            "storage/models/cpt/bear_final.pt",
+            "storage/models/pretrain/bear_final.pt",
+            "storage/models/bear_final.pt",
+        ):
+            if Path(cand).exists():
+                ckpt_path = Path(cand)
+                break
+
+    if args.dry_run or not ckpt_path.exists():
         if not args.dry_run:
-            print(f"[Notice] Checkpoint {args.checkpoint} not found. Running in mock/dry-run mode.")
+            print(f"[Notice] Checkpoint {ckpt_path} not found. Running in mock/dry-run mode.")
         cfg = BearConfig(
             vocab_size=tokenizer.vocab_size,
             d_model=128,
@@ -302,8 +315,8 @@ def main():
         )
         model = BearTransformer(cfg).to(device)
     else:
-        print(f"Loading model checkpoint from: {args.checkpoint} ...")
-        ckpt = torch.load(args.checkpoint, map_location=device, weights_only=False)
+        print(f"Loading model checkpoint from: {ckpt_path} ...")
+        ckpt = torch.load(str(ckpt_path), map_location=device, weights_only=False)
         model_cfg = BearConfig(**ckpt.get("model_config", {}))
         model = BearTransformer(model_cfg).to(device)
         model.load_state_dict(ckpt["model_state"])

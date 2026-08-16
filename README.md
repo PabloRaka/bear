@@ -127,11 +127,11 @@ Train the model sequentially through the 4-stage curriculum. **Always run the st
 *General knowledge, large-scale multi-domain language modeling (Chinchilla Optimal: ~6.29B tokens, LR: 3e-4, Warmup: 500 steps).*
 
 ```bash
-# 1. Train Pre-training Stage (12,000 steps ~ 6.29B tokens in ~14 hours on MI300X)
+# 1. Train Pre-training Stage (Saves to storage/models/pretrain/)
 uv run python -m train.pretrain --batch-size 16 --grad-accum 8 --max-steps 12000
 
 # 2. Evaluate Pre-training Checkpoint (PPL, Loss, Bits-Per-Byte on Wikipedia/MMLU/ARC)
-uv run python -m eval.evaluator --stage pretrain --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage pretrain
 ```
 
 ---
@@ -140,11 +140,11 @@ uv run python -m eval.evaluator --stage pretrain --checkpoint storage/models/bea
 *Domain specialization in Python/TypeScript source code, OpenWebMath, LaTeX proofs, and PowerShell/Bash CLI scripting (LR: 1e-4).*
 
 ```bash
-# 1. Train CPT Stage (Resumes from pretrain checkpoint)
-uv run python -m train.cpt --resume storage/models/bear_final.pt --max-steps 20000
+# 1. Train CPT Stage (Auto-resumes from storage/models/pretrain/bear_final.pt, saves to storage/models/cpt/)
+uv run python -m train.cpt --max-steps 5000
 
 # 2. Evaluate CPT Checkpoint (HumanEval coding, GSM8K arithmetic, LaTeX math, CLI)
-uv run python -m eval.evaluator --stage cpt --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage cpt
 ```
 
 ---
@@ -153,11 +153,11 @@ uv run python -m eval.evaluator --stage cpt --checkpoint storage/models/bear_fin
 *Instruction following, multi-turn dialogues, and Chain-of-Thought reasoning using Kimi-K3 XTML markup (LR: 2e-5, Weight Decay: 0.01).*
 
 ```bash
-# 1. Train SFT Stage (Resumes from CPT checkpoint)
-uv run python -m train.sft --resume storage/models/bear_final.pt --max-steps 5000
+# 1. Train SFT Stage (Auto-resumes from storage/models/cpt/bear_final.pt, saves to storage/models/sft/)
+uv run python -m train.sft --max-steps 3000
 
 # 2. Evaluate SFT Checkpoint (XTML format compliance, keyword recall, reasoning CoT)
-uv run python -m eval.evaluator --stage sft --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage sft
 ```
 
 ---
@@ -166,11 +166,11 @@ uv run python -m eval.evaluator --stage sft --checkpoint storage/models/bear_fin
 *Refusal of harmful, unauthorized, or exploitative requests while preserving helpfulness on benign security education queries (LR: 5e-6).*
 
 ```bash
-# 1. Train Safety Stage (Resumes from SFT checkpoint)
-uv run python -m train.safety --resume storage/models/bear_final.pt --max-steps 2000
+# 1. Train Safety Stage (Auto-resumes from storage/models/sft/bear_final.pt, saves to storage/models/safety/)
+uv run python -m train.safety --max-steps 1500
 
 # 2. Evaluate Safety Checkpoint (Refusal Accuracy & Benign Pass Rate)
-uv run python -m eval.evaluator --stage safety --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage safety
 ```
 
 ---
@@ -179,7 +179,7 @@ uv run python -m eval.evaluator --stage safety --checkpoint storage/models/bear_
 Run all 4 stage benchmark suites simultaneously to produce a comprehensive model scorecard:
 
 ```bash
-uv run python -m eval.evaluator --stage all --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage all
 ```
 
 All evaluation results and metrics are automatically saved as JSON reports under `storage/eval/eval_report_<stage>_<timestamp>.json`.

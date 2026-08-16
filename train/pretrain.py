@@ -55,7 +55,7 @@ def main():
     parser.add_argument("--dataset-dir", type=str, default="storage/dataset")
 
     # Checkpointing & Evaluation
-    parser.add_argument("--checkpoint-dir", type=str, default="storage/models")
+    parser.add_argument("--checkpoint-dir", type=str, default="storage/models/pretrain")
     parser.add_argument("--save-every", type=int, default=500)
     parser.add_argument("--eval-every", type=int, default=500, help="Evaluate validation loss/BPB every N steps")
     parser.add_argument("--eval-batches", type=int, default=50, help="Number of batches to evaluate")

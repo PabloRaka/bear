@@ -54,12 +54,12 @@ def main():
     parser.add_argument("--dataset-dir", type=str, default="storage/dataset")
 
     # Checkpointing & Evaluation
-    parser.add_argument("--checkpoint-dir", type=str, default="storage/models")
+    parser.add_argument("--checkpoint-dir", type=str, default="storage/models/sft")
     parser.add_argument("--save-every", type=int, default=500)
     parser.add_argument("--eval-every", type=int, default=500, help="Evaluate validation loss/BPB every N steps")
     parser.add_argument("--eval-batches", type=int, default=50, help="Number of batches to evaluate")
     parser.add_argument("--log-every", type=int, default=10)
-    parser.add_argument("--resume", type=str, required=True, help="Path to CPT checkpoint (required)")
+    parser.add_argument("--resume", type=str, default=None, help="Path to CPT checkpoint (defaults to storage/models/cpt/bear_final.pt)")
 
     # Device
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu", "mps"])
@@ -174,6 +174,18 @@ def main():
     except FileNotFoundError:
         print(f"  No validation set found, skipping eval")
 
+    # Auto-resolve resume checkpoint if not explicitly provided
+    resume_from = args.resume
+    if not resume_from:
+        for candidate in ("storage/models/cpt/bear_final.pt", "storage/models/bear_final.pt"):
+            if Path(candidate).exists():
+                resume_from = candidate
+                break
+    if not resume_from and not args.dry_run:
+        print("  [ERROR] CPT checkpoint not found! Please specify --resume storage/models/cpt/bear_final.pt")
+        import sys
+        sys.exit(1)
+
     # Train
     train(
         model=model,
@@ -181,7 +193,7 @@ def main():
         val_loader=val_loader,
         config=train_config,
         device=args.device,
-        resume_from=args.resume,
+        resume_from=resume_from,
         reset_step=True,
     )
 
