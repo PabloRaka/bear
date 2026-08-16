@@ -141,14 +141,15 @@ def stream_generate(
         if any(seq in current_text for seq in stop_seqs):
             break
 
-        # Stream token piece to console
-        token_str = tokenizer.decode([token_id], skip_special_tokens=False)
-        sys.stdout.write(token_str)
-        sys.stdout.flush()
+        # Stream clean token piece to console (skip special tokens in live stream)
+        token_str = tokenizer.decode([token_id], skip_special_tokens=True)
+        if token_str and not any(tag in token_str for tag in ("<|", "|>", "[EOT]")):
+            sys.stdout.write(token_str)
+            sys.stdout.flush()
 
     elapsed = max(time.time() - t0, 1e-4)
     tokens_per_sec = len(generated_ids) / elapsed
-    full_response = tokenizer.decode(generated_ids, skip_special_tokens=False)
+    full_response = tokenizer.decode(generated_ids, skip_special_tokens=True)
     for seq in ("<|end_of_msg|>", "<|end_of_text|>", "<|open|>message", "<|endOfMessage|>", "[EOT]"):
         if seq in full_response:
             full_response = full_response.split(seq)[0]
