@@ -18,7 +18,7 @@ import os
 import sys
 import time
 import argparse
-from pathlib import Path
+from pathlib import Path 
 from typing import List, Dict, Optional, Tuple
 
 import torch
@@ -28,7 +28,7 @@ from engine.transformer import BearTransformer, BearConfig
 from engine.tokenizer import BearTokenizer
 
 
-DEFAULT_SYSTEM_PROMPT = "Anda adalah Mesosfer Bear AI, asisten kecerdasan buatan yang cerdas, sopan, dan berbahasa Indonesia baku serta fasih dalam pemrograman dan sains."
+DEFAULT_SYSTEM_PROMPT = ""
 
 
 def print_banner(model_name: str, params: int, vocab_size: int, device: str, thinking: bool):
@@ -55,9 +55,10 @@ def stream_generate(
     prompt_ids: List[int],
     max_new_tokens: int = 512,
     min_new_tokens: int = 1,
-    temperature: float = 0.7,
+    temperature: float = 0.3,
     top_k: int = 40,
     top_p: float = 0.9,
+    repetition_penalty: float = 1.2,
     device: str = "cpu",
     stop_token_ids: Optional[set] = None,
 ) -> Tuple[str, int, float]:
@@ -90,13 +91,21 @@ def stream_generate(
             logits, _ = model(cond_ids)
             next_logits = logits[:, -1, :].clone()
 
-            # Repetition penalty
+            # 1. Repetition penalty
             if generated_ids:
                 for prev_token in set(generated_ids[-128:]):
                     if next_logits[0, prev_token] < 0:
-                        next_logits[0, prev_token] *= 1.15
+                        next_logits[0, prev_token] *= repetition_penalty
                     else:
-                        next_logits[0, prev_token] /= 1.15
+                        next_logits[0, prev_token] /= repetition_penalty
+
+            # 2. Strict 3-gram repetition banning
+            if len(generated_ids) >= 3:
+                last_2 = tuple(generated_ids[-2:])
+                for i in range(len(generated_ids) - 2):
+                    if (generated_ids[i], generated_ids[i+1]) == last_2:
+                        banned_tok = generated_ids[i+2]
+                        next_logits[0, banned_tok] = float("-inf")
 
             if temperature > 0:
                 next_logits = next_logits / temperature
@@ -229,8 +238,8 @@ def run_chat_loop(
         # Add user message to conversation
         conversation.append({"role": "user", "content": user_input})
 
-        # Build full conversation message list with system prompt
-        full_convo = [{"role": "system", "content": system_prompt}] + conversation
+        # Build full conversation message list (omit system message if empty)
+        full_convo = ([{"role": "system", "content": system_prompt}] if system_prompt.strip() else []) + conversation
 
         # Apply Kimi-K3 XTML chat markup template
         prompt_ids = tokenizer.apply_chat_template(
