@@ -135,6 +135,12 @@ def stream_generate(
         generated_ids.append(token_id)
         input_ids = torch.cat([input_ids, next_token], dim=1)
 
+        # Check for stop sequence string in generated buffer
+        current_text = tokenizer.decode(generated_ids, skip_special_tokens=False)
+        stop_seqs = ("<|end_of_msg|>", "<|end_of_text|>", "<|open|>message", "<|endOfMessage|>", "[EOT]")
+        if any(seq in current_text for seq in stop_seqs):
+            break
+
         # Stream token piece to console
         token_str = tokenizer.decode([token_id], skip_special_tokens=False)
         sys.stdout.write(token_str)
@@ -143,8 +149,11 @@ def stream_generate(
     elapsed = max(time.time() - t0, 1e-4)
     tokens_per_sec = len(generated_ids) / elapsed
     full_response = tokenizer.decode(generated_ids, skip_special_tokens=False)
+    for seq in ("<|end_of_msg|>", "<|end_of_text|>", "<|open|>message", "<|endOfMessage|>", "[EOT]"):
+        if seq in full_response:
+            full_response = full_response.split(seq)[0]
 
-    return full_response, len(generated_ids), tokens_per_sec
+    return full_response.strip(), len(generated_ids), tokens_per_sec
 
 
 def run_chat_loop(
