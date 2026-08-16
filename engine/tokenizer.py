@@ -262,8 +262,8 @@ class BearTokenizer:
         if not tokenize:
             return formatted_text
 
-        # When generating (add_generation_prompt=True), do not append EOS token so model can continue generating
-        return self.encode(formatted_text, add_special_tokens=(not add_generation_prompt), allow_special=True)
+        # ponytail: match encoding to what SFT training used (BPE-split special tokens)
+        return self.encode(formatted_text, add_special_tokens=(not add_generation_prompt), allow_special=False)
 
     def save(self, filepath: str):
         """Save vocabulary and config to JSON file."""
