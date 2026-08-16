@@ -26,9 +26,22 @@ from engine.tokenizer import BearTokenizer
 
 
 def load_kimi_tokenizer(model_path: str = "storage/benchmark/kimi/tiktoken.model") -> tiktoken.Encoding:
-    """Load Moonshot Kimi-K3 tiktoken model."""
+    """Load Moonshot Kimi-K3 tiktoken model, auto-downloading from Hugging Face if not cached."""
     if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Kimi model file not found at: {model_path}")
+        print(f"  [Auto-Download] Fetching Kimi-K3 tokenizer from Hugging Face Hub (moonshotai/Moonlight-16B-A3B-Instruct)...")
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        try:
+            from huggingface_hub import hf_hub_download
+            downloaded = hf_hub_download(
+                repo_id="moonshotai/Moonlight-16B-A3B-Instruct",
+                filename="tiktoken.model",
+                local_dir=os.path.dirname(model_path),
+            )
+            # Ensure proper filename
+            if downloaded != model_path and os.path.exists(downloaded):
+                os.replace(downloaded, model_path)
+        except Exception as e:
+            raise FileNotFoundError(f"Failed to auto-download Kimi tokenizer from Hugging Face: {e}")
     
     mergeable_ranks = load_tiktoken_bpe(model_path)
     
@@ -64,9 +77,21 @@ def load_kimi_tokenizer(model_path: str = "storage/benchmark/kimi/tiktoken.model
 
 
 def load_qwen_tokenizer(json_path: str = "storage/benchmark/qwen/tokenizer.json") -> HFTokenizer:
-    """Load Alibaba Qwen3.8 tokenizer."""
+    """Load Alibaba Qwen3.8 tokenizer, auto-downloading from Hugging Face if not cached."""
     if not os.path.exists(json_path):
-        raise FileNotFoundError(f"Qwen tokenizer file not found at: {json_path}")
+        print(f"  [Auto-Download] Fetching Qwen tokenizer from Hugging Face Hub (Qwen/Qwen2.5-7B)...")
+        os.makedirs(os.path.dirname(json_path), exist_ok=True)
+        try:
+            from huggingface_hub import hf_hub_download
+            downloaded = hf_hub_download(
+                repo_id="Qwen/Qwen2.5-7B",
+                filename="tokenizer.json",
+                local_dir=os.path.dirname(json_path),
+            )
+            if downloaded != json_path and os.path.exists(downloaded):
+                os.replace(downloaded, json_path)
+        except Exception as e:
+            raise FileNotFoundError(f"Failed to auto-download Qwen tokenizer from Hugging Face: {e}")
     return HFTokenizer.from_file(json_path)
 
 

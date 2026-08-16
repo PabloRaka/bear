@@ -341,17 +341,35 @@ def run_stage_evaluation(
         tokenizer = BearTokenizer()
         print(f"  Tokenizer    : Fallback Base (Vocab: {tokenizer.vocab_size:,})")
 
-    # 2. Load Model
-    if dry_run or checkpoint_path is None or not Path(checkpoint_path).exists():
+    # 2. Resolve & Load Model Checkpoint
+    resolved_ckpt = checkpoint_path
+    if not dry_run and not resolved_ckpt:
+        # Check stage-specific folders first, then general storage/models/
+        candidate_paths = [
+            f"storage/models/{stage}/bear_final.pt",
+            "storage/models/bear_final.pt",
+            f"storage/models/safety/bear_final.pt",
+            f"storage/models/sft/bear_final.pt",
+            f"storage/models/cpt/bear_final.pt",
+            f"storage/models/pretrain/bear_final.pt",
+        ]
+        for cp in candidate_paths:
+            if Path(cp).exists():
+                resolved_ckpt = cp
+                break
+
+    if dry_run or resolved_ckpt is None or not Path(resolved_ckpt).exists():
         print(f"  Model Source : [DRY-RUN / In-Memory Mock Model]")
         cfg = BearConfig(vocab_size=tokenizer.vocab_size, d_model=64, n_layers=2, n_heads=4, n_kv_heads=2, ffn_hidden=128, max_seq_len=256)
         model = BearTransformer(cfg).to(device)
     else:
-        print(f"  Model Source : {checkpoint_path}")
-        ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        print(f"  Model Source : {resolved_ckpt}")
+        ckpt = torch.load(resolved_ckpt, map_location=device, weights_only=False)
         m_cfg = BearConfig(**ckpt.get("model_config", {}))
         model = BearTransformer(m_cfg).to(device)
         model.load_state_dict(ckpt["model_state"])
+
+    checkpoint_path = resolved_ckpt
 
     model.eval()
 

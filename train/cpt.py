@@ -43,8 +43,8 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--min-lr", type=float, default=1e-5)
     parser.add_argument("--warmup-steps", type=int, default=200)
-    parser.add_argument("--max-steps", type=int, default=20000)
-    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--max-steps", type=int, default=5000, help="Max CPT steps (~2.6B tokens)")
+    parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--grad-accum", type=int, default=8)
     parser.add_argument("--weight-decay", type=float, default=0.1)
     parser.add_argument("--grad-clip", type=float, default=1.0)
@@ -54,12 +54,12 @@ def main():
     parser.add_argument("--dataset-dir", type=str, default="storage/dataset")
 
     # Checkpointing & Evaluation
-    parser.add_argument("--checkpoint-dir", type=str, default="storage/models")
+    parser.add_argument("--checkpoint-dir", type=str, default="storage/models/cpt")
     parser.add_argument("--save-every", type=int, default=1000)
     parser.add_argument("--eval-every", type=int, default=1000, help="Evaluate validation loss/BPB every N steps")
     parser.add_argument("--eval-batches", type=int, default=50, help="Number of batches to evaluate")
     parser.add_argument("--log-every", type=int, default=10)
-    parser.add_argument("--resume", type=str, required=True, help="Path to pretrain checkpoint (required)")
+    parser.add_argument("--resume", type=str, default=None, help="Path to pretrain checkpoint (defaults to storage/models/pretrain/bear_final.pt)")
 
     # Device
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu", "mps"])
@@ -174,6 +174,18 @@ def main():
     except FileNotFoundError:
         print(f"  No validation set found, skipping eval")
 
+    # Auto-resolve resume checkpoint if not explicitly provided
+    resume_from = args.resume
+    if not resume_from:
+        for candidate in ("storage/models/pretrain/bear_final.pt", "storage/models/bear_final.pt"):
+            if Path(candidate).exists():
+                resume_from = candidate
+                break
+    if not resume_from and not args.dry_run:
+        print("  [ERROR] Pretrain checkpoint not found! Please specify --resume storage/models/pretrain/bear_final.pt")
+        import sys
+        sys.exit(1)
+
     # Train
     train(
         model=model,
@@ -181,7 +193,8 @@ def main():
         val_loader=val_loader,
         config=train_config,
         device=args.device,
-        resume_from=args.resume,
+        resume_from=resume_from,
+        reset_step=True,
     )
 
 

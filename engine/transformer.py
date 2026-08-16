@@ -44,6 +44,16 @@ class BearConfig:
     dropout: float = 0.0     # ponytail: 0 for pre-training, set >0 for fine-tuning
     tie_weights: bool = True
 
+    @classmethod
+    def from_dict(cls, d: dict) -> "BearConfig":
+        import dataclasses
+        valid_keys = {f.name for f in dataclasses.fields(cls)}
+        return cls(**{k: v for k, v in d.items() if k in valid_keys})
+
+    def to_dict(self) -> dict:
+        import dataclasses
+        return dataclasses.asdict(self)
+
 
 # -- RMSNorm ----------------------------------------------------------------
 

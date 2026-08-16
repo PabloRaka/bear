@@ -24,13 +24,13 @@ We use [`uv`](https://github.com/astral-sh/uv) for fast, deterministic, and repr
 git clone https://github.com/mesosfer/bear.git
 cd bear
 
-# 2. Synchronize environment & dependencies
+# 2. Synchronize base environment & dependencies
 uv sync
 
-# 3. For GPU Cluster (NVIDIA CUDA / AMD Instinct MI300X):
+# 3a. For NVIDIA CUDA GPUs:
 uv sync --extra gpu
 
-# Specific for AMD Instinct MI300X (ROCm 6.0+ CDNA 3):
+# 3b. For AMD Instinct MI300X (ROCm 6.0+ CDNA 3):
 GPU_ARCHS="gfx942" uv pip install flash-attn --no-build-isolation
 ```
 
@@ -124,14 +124,14 @@ Train the model sequentially through the 4-stage curriculum. **Always run the st
 ```
 
 #### 🔹 Stage 1: Foundational Pre-training
-*General knowledge, large-scale multi-domain language modeling (LR: 3e-4, Warmup: 500 steps).*
+*General knowledge, large-scale multi-domain language modeling (Chinchilla Optimal: ~6.29B tokens, LR: 3e-4, Warmup: 500 steps).*
 
 ```bash
-# 1. Train Pre-training Stage
-uv run python -m train.pretrain --batch-size 4 --grad-accum 8 --max-steps 50000
+# 1. Train Pre-training Stage (Saves to storage/models/pretrain/)
+uv run python -m train.pretrain --batch-size 16 --grad-accum 8 --max-steps 12000
 
 # 2. Evaluate Pre-training Checkpoint (PPL, Loss, Bits-Per-Byte on Wikipedia/MMLU/ARC)
-uv run python -m eval.evaluator --stage pretrain --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage pretrain
 ```
 
 ---
@@ -140,11 +140,11 @@ uv run python -m eval.evaluator --stage pretrain --checkpoint storage/models/bea
 *Domain specialization in Python/TypeScript source code, OpenWebMath, LaTeX proofs, and PowerShell/Bash CLI scripting (LR: 1e-4).*
 
 ```bash
-# 1. Train CPT Stage (Resumes from pretrain checkpoint)
-uv run python -m train.cpt --resume storage/models/bear_final.pt --max-steps 20000
+# 1. Train CPT Stage (Auto-resumes from storage/models/pretrain/bear_final.pt, saves to storage/models/cpt/)
+uv run python -m train.cpt --max-steps 5000
 
 # 2. Evaluate CPT Checkpoint (HumanEval coding, GSM8K arithmetic, LaTeX math, CLI)
-uv run python -m eval.evaluator --stage cpt --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage cpt
 ```
 
 ---
@@ -153,11 +153,11 @@ uv run python -m eval.evaluator --stage cpt --checkpoint storage/models/bear_fin
 *Instruction following, multi-turn dialogues, and Chain-of-Thought reasoning using Kimi-K3 XTML markup (LR: 2e-5, Weight Decay: 0.01).*
 
 ```bash
-# 1. Train SFT Stage (Resumes from CPT checkpoint)
-uv run python -m train.sft --resume storage/models/bear_final.pt --max-steps 5000
+# 1. Train SFT Stage (Auto-resumes from storage/models/cpt/bear_final.pt, saves to storage/models/sft/)
+uv run python -m train.sft --max-steps 3000
 
 # 2. Evaluate SFT Checkpoint (XTML format compliance, keyword recall, reasoning CoT)
-uv run python -m eval.evaluator --stage sft --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage sft
 ```
 
 ---
@@ -166,11 +166,11 @@ uv run python -m eval.evaluator --stage sft --checkpoint storage/models/bear_fin
 *Refusal of harmful, unauthorized, or exploitative requests while preserving helpfulness on benign security education queries (LR: 5e-6).*
 
 ```bash
-# 1. Train Safety Stage (Resumes from SFT checkpoint)
-uv run python -m train.safety --resume storage/models/bear_final.pt --max-steps 2000
+# 1. Train Safety Stage (Auto-resumes from storage/models/sft/bear_final.pt, saves to storage/models/safety/)
+uv run python -m train.safety --max-steps 1500
 
 # 2. Evaluate Safety Checkpoint (Refusal Accuracy & Benign Pass Rate)
-uv run python -m eval.evaluator --stage safety --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage safety
 ```
 
 ---
@@ -179,7 +179,7 @@ uv run python -m eval.evaluator --stage safety --checkpoint storage/models/bear_
 Run all 4 stage benchmark suites simultaneously to produce a comprehensive model scorecard:
 
 ```bash
-uv run python -m eval.evaluator --stage all --checkpoint storage/models/bear_final.pt
+uv run python -m eval.evaluator --stage all
 ```
 
 All evaluation results and metrics are automatically saved as JSON reports under `storage/eval/eval_report_<stage>_<timestamp>.json`.
@@ -208,6 +208,26 @@ uv run python -m chat.cli --dry-run
 - `/temp <value>` — Adjust sampling temperature (e.g., `/temp 0.7`)
 - `/history` — Display active conversation dialogue tree
 - `/exit` or `/quit` — Exit chat session
+
+---
+
+### Step 5: Interactive Model Packaging & Hugging Face Hub Release
+
+Package and commit trained checkpoints per stage (complete with 60k Kimi-K3 tokenizer, architecture config, generation config, standalone `inference.py`, `chat/cli.py`, self-contained engine, and benchmark scorecards) directly to Hugging Face Model Hub:
+
+```bash
+# 1. Interactive terminal wizard (Select stage, checkpoint, and repo interactively)
+uv run python -m scripts.commit_model
+
+# 2. Or direct CLI commit
+uv run python -m scripts.commit_model --stage pretrain --checkpoint storage/models/bear_final.pt --repo Dummy9898/bear-240m-pretrain
+
+# 3. Export standalone bundle locally to storage/export/ without uploading
+uv run python -m scripts.commit_model --stage pretrain --export-only
+
+# 4. List all available local checkpoints
+uv run python -m scripts.commit_model --list
+```
 
 ---
 
@@ -242,6 +262,9 @@ bear/
 │   └── transformer.py              # Llama-style decoder-only BearTransformer
 ├── eval/
 │   └── evaluator.py                # Stage-specific benchmark runner & reporter
+├── scripts/
+│   ├── __init__.py
+│   └── commit_model.py             # Interactive Model Release, Bundling & Hub Committer
 ├── task/
 │   ├── pretrain_tasks.json         # HF Pretrain Benchmark Tasks (Wikipedia, MMLU, ARC)
 │   ├── cpt_tasks.json              # HF CPT Technical Tasks (HumanEval, GSM8K, PowerShell)
@@ -249,10 +272,12 @@ bear/
 │   └── safety_tasks.json           # HF Safety Tasks (PKU-SafeRLHF, HH-RLHF, JailbreakHub)
 ├── tests/
 │   ├── test_chat.py
+│   ├── test_commit_model.py
 │   ├── test_dataloader.py
 │   ├── test_dataset.py
 │   ├── test_engine.py
 │   ├── test_eval.py
+│   ├── test_hf_download.py
 │   ├── test_hf_upload.py
 │   ├── test_tokenizer.py
 │   └── test_transformer.py
