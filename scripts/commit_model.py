@@ -58,7 +58,10 @@ def find_available_checkpoints(
         return []
     
     ckpts = []
-    for f in model_dir.glob("*.pt"):
+    for f in model_dir.rglob("*.pt"):
+        # Skip export or temp folders
+        if "export" in f.parts:
+            continue
         size_mb = f.stat().st_size / (1024 * 1024)
         step = 0
         loss = float("nan")
@@ -75,17 +78,21 @@ def find_available_checkpoints(
         except Exception:
             pass
 
-        # Normalize stage detection if not explicitly set
+        # Normalize stage detection: check parent directory then filename
         if not stage or stage == "unknown":
-            f_lower = f.name.lower()
-            if "cpt" in f_lower:
-                stage = "cpt"
-            elif "sft" in f_lower:
-                stage = "sft"
-            elif "safety" in f_lower:
-                stage = "safety"
+            parent_name = f.parent.name.lower()
+            if parent_name in ("pretrain", "cpt", "sft", "safety"):
+                stage = parent_name
             else:
-                stage = "pretrain"
+                f_lower = f.name.lower()
+                if "cpt" in f_lower:
+                    stage = "cpt"
+                elif "sft" in f_lower:
+                    stage = "sft"
+                elif "safety" in f_lower:
+                    stage = "safety"
+                else:
+                    stage = "pretrain"
 
         ckpts.append((f, step, loss, stage, f"{size_mb:.1f} MB"))
     
