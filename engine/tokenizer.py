@@ -262,8 +262,8 @@ class BearTokenizer:
         if not tokenize:
             return formatted_text
 
-        # ponytail: match encoding to what SFT training used (BPE-split special tokens)
-        return self.encode(formatted_text, add_special_tokens=(not add_generation_prompt), allow_special=False)
+        # Single-ID special tokens (59989, 59990, 59988) for clean structural markers
+        return self.encode(formatted_text, add_special_tokens=(not add_generation_prompt), allow_special=True)
 
     def save(self, filepath: str):
         """Save vocabulary and config to JSON file."""
