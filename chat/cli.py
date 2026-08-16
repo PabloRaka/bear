@@ -88,7 +88,15 @@ def stream_generate(
         cond_ids = input_ids if input_ids.size(1) <= model.config.max_seq_len else input_ids[:, -model.config.max_seq_len:]
         with torch.no_grad():
             logits, _ = model(cond_ids)
-            next_logits = logits[:, -1, :]
+            next_logits = logits[:, -1, :].clone()
+
+            # Repetition penalty
+            if generated_ids:
+                for prev_token in set(generated_ids[-128:]):
+                    if next_logits[0, prev_token] < 0:
+                        next_logits[0, prev_token] *= 1.15
+                    else:
+                        next_logits[0, prev_token] /= 1.15
 
             if temperature > 0:
                 next_logits = next_logits / temperature
