@@ -301,7 +301,7 @@ class PackedDataset(IterableDataset):
 
         for file_path in files:
             for text in extract_texts(file_path):
-                token_ids = self.tokenizer.encode(text)
+                token_ids = self.tokenizer.encode(text, allow_special=True)
                 if token_ids:
                     yield from token_ids
                     yield self.eos_id

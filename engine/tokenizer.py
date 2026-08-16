@@ -166,7 +166,7 @@ class BearTokenizer:
         self,
         text: str,
         add_special_tokens: bool = False,
-        allow_special: bool = False
+        allow_special: bool = True
     ) -> List[int]:
         """
         Encode text into a list of token IDs.
@@ -200,7 +200,7 @@ class BearTokenizer:
         self,
         texts: List[str],
         add_special_tokens: bool = False,
-        allow_special: bool = False
+        allow_special: bool = True
     ) -> List[List[int]]:
         """Encode a batch of text strings into token ID lists."""
         return [self.encode(t, add_special_tokens=add_special_tokens, allow_special=allow_special) for t in texts]
