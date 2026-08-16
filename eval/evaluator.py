@@ -130,7 +130,8 @@ def generate_text(
 
             input_ids = torch.cat([input_ids, next_token], dim=1)
 
-            if next_token.item() == tokenizer.eos_id:
+            stop_ids = {tokenizer.eos_id, tokenizer.special_tokens.get("<|end_of_msg|>"), tokenizer.special_tokens.get("<|end_of_text|>"), tokenizer.special_tokens.get("[EOT]")}
+            if next_token.item() in {tid for tid in stop_ids if tid is not None}:
                 break
 
     generated_tokens = input_ids[0].tolist()[len(tokens):]
